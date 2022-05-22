@@ -17,7 +17,7 @@
 
 const int epsilon = 128;
 
-std::vector<double> measure_build_times(std::vector<int> data, const int build_num = 10){
+std::vector<double> measure_build_times(const std::vector<int> &data, const int build_num = 10){
     std::vector<double> build_times;
     for(int i = 0; i < build_num; i++){
         clock_t start = clock();
@@ -43,13 +43,20 @@ void show_ave_std(std::vector<double> vec){
 }
 
 int main() {
-    // Generate some random data
-    std::vector<int> data(1000000);
-    std::generate(data.begin(), data.end(), std::rand);
-    std::sort(data.begin(), data.end());
+    const int data_length = 1000000;
+    const int build_num = 10;
 
-    std::vector<double> build_times = measure_build_times(data, 10);
+    // the case of random data
+    std::vector<int> random_data(data_length);
+    std::generate(random_data.begin(), random_data.end(), std::rand);
+    std::sort(random_data.begin(), random_data.end());    
+
+    std::vector<double> build_times = measure_build_times(random_data, build_num);
+    std::cout << "--- random data ---" << std::endl;
     show_ave_std(build_times);
+
+    // the case of fgsm
+
 
     return 0;
 }
