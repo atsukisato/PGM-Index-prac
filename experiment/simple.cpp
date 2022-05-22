@@ -28,6 +28,12 @@ std::vector<double> measure_build_times(const std::vector<int> &data, const int 
     return build_times;
 }
 
+template<typename T>
+double measure_size(const std::vector<T> &data){
+    pgm::PGMIndex<T, epsilon> index(data);
+    return (double)index.size_in_bytes();
+}
+
 void show_ave_std(std::vector<double> vec){
     int n = (int)vec.size();
     double sum = 0.0;
@@ -86,16 +92,20 @@ int main() {
     for(int step_intv : step_intvs){
         std::vector<int> step_data = make_step_data(data_length, step_intv);
         std::vector<double> build_times = measure_build_times(random_data, build_num);
+        double size = measure_size(random_data);
         std::cout << "--- step data ( step_intv = " << step_intv << " ) ---" << std::endl;
         show_ave_std(build_times);
+        std::cout << size << std::endl;
     }
 
     // the case of rec step data
     for(int step_intv : step_intvs){
         std::vector<int> step_data = make_rec_step_data(data_length, step_intv);
-        std::vector<double> build_times = measure_build_times(random_data, build_num);
+        std::vector<double> build_times = measure_build_times(step_data, build_num);
+        double size = measure_size(step_data);
         std::cout << "--- rec step data ( step_intv = " << step_intv << " ) ---" << std::endl;
         show_ave_std(build_times);
+        std::cout << size << std::endl;
     }
 
     return 0;
