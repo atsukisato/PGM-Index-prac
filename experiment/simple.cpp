@@ -62,7 +62,7 @@ std::vector<double> make_random_double_data(const int data_length = 1000000, con
     return data;
 }
 
-std::vector<double> calc_grad(const std::vector<double> &data){
+std::vector<double> calc_gradd(const std::vector<double> &data){
     const int n = data.size();
 
     std::vector<double> build_times = measure_build_times(data);
@@ -127,7 +127,7 @@ int main() {
         for(int i=0;i<data_length-1;i++){
             ddata[i] = data[i+1] - data[i];
         }
-        std::vector<double> gradd = calc_grad(data);
+        std::vector<double> gradd = calc_gradd(data);
         for(int i=0;i<data_length-1;i++){
             ddata[i] += alpha * gradd[i];
             if(ddata[i] < 1e-10){
