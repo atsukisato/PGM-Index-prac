@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <random>
 #include "pgm/pgm_index.hpp"
 
 
@@ -62,41 +63,6 @@ std::vector<double> make_random_double_data(const int data_length = 1000000, con
     return data;
 }
 
-std::vector<double> calc_gradd(const std::vector<double> &data){
-    const int n = data.size();
-
-    std::vector<double> build_times = measure_build_times(data);
-    std::pair<double, double> base = get_ave_std(build_times);
-    const double base_ave = base.first;
-    const double base_std = base.second;
-
-    std::vector<double> ddata(n-1);
-    for(int i=0;i<n-1;i++){
-        ddata[i] = data[i+1] - data[i];
-    }
-
-    const double delta = 0.01;
-
-    std::vector<double> grad_ddata(n-1);
-    for(int i=0;i<n-1;i++){
-        ddata[i] += delta;
-        std::vector<double> tmp_data(n);
-        tmp_data[0] = data[0];
-        for(int j=1;j<n;j++){
-            tmp_data[j] = tmp_data[j-1] + ddata [j-1];
-        }
-        ddata[i] -= delta;
-
-        std::vector<double> build_times = measure_build_times(tmp_data);
-        std::pair<double, double> as = get_ave_std(build_times);
-        double ave = as.first;
-        double std = as.second;
-        grad_ddata[i] = (ave - base_ave) / delta;
-    }
-
-    return grad_ddata;
-}
-
 void normalize_data(std::vector<double> &data){
     const int n = data.size();
     double a = 1.0 / (data[n-1] - data[0]);
@@ -106,54 +72,115 @@ void normalize_data(std::vector<double> &data){
     }
 }
 
+
+double PROBABILITY(double e1, double e2, double t){
+    if (e1 >= e2){
+        return 1;
+    }else{
+        return exp((e1 - e2) / t);
+    }
+}
+
+double TEMPERATURE(double r){
+    double alpha = 0.99;
+    return pow(alpha, r);
+}
+
 int main() {
-    const int data_length = 1000;
-    const int epoch = 10;
-    const double alpha = 0.1;
+    const int data_length = 1000000;
+    const int epoch = 100;
+    double alpha = 0.1;
+
+    std::random_device seed_gen;
+    std::default_random_engine engine(seed_gen());
+    std::normal_distribution<> dist(0.0, 1.0);
+    std::uniform_real_distribution<> uni_dist(0, 1.0);
 
     // init data
-    std::vector<double> data = make_random_double_data(data_length);
-    normalize_data(data);
+    std::vector<double> init_data = make_random_double_data(data_length);
+    normalize_data(init_data);
 
-    std::vector<double> build_times = measure_build_times(data);
-    std::pair<double, double> as = get_ave_std(build_times);
-    double ave = as.first;
-    double std = as.second;
-    std::cerr << ave << std::endl;
+    /*
+    for(double d : init_data){
+        std::cout << d << ' ';
+    }
+    std::cout << std::endl;
+    */
+
+    std::vector<double> data = init_data;
+
+    std::vector<double> build_times = measure_build_times(data, 5);
+    double ave = - get_ave_std(build_times).first;
+    double std = - get_ave_std(build_times).second;
+    std::cerr << ave <<std::endl;
+    std::cerr << std <<std::endl;
+
+
+    std::vector<double> best_data = data;
+    double best_ave = ave;
+
+    std::vector<double> now_data = data;
+    double now_ave = ave;
 
     for(int ep = 0; ep < epoch; ep++){
         std::vector<double> ddata(data_length-1);
         for(int i=0;i<data_length-1;i++){
             ddata[i] = data[i+1] - data[i];
         }
-        std::vector<double> gradd = calc_gradd(data);
+
+        std::vector<double> new_ddata(data_length-1);
         for(int i=0;i<data_length-1;i++){
-            ddata[i] += alpha * gradd[i];
-            if(ddata[i] < 1e-10){
-                // to make data "narrowly" monotonous increase
-                ddata[i] = 1e-10;
+            new_ddata[i] = ddata[i] + alpha * dist(engine);
+            if(new_ddata[i] < 1e-10){
+                new_ddata[i] = 1e-10;
             }
         }
 
+        std::vector<double> new_data(data_length);
+        new_data[0] = data[0];
         for(int i=1;i<data_length;i++){
-            data[i] = data[i-1] + ddata[i-1];
+            new_data[i] = new_data[i-1] + new_ddata[i-1];
+        }
+        normalize_data(new_data);
+
+        std::vector<double> new_build_times = measure_build_times(new_data, 5);
+        double new_ave = - get_ave_std(new_build_times).first;
+
+        if(new_ave < best_ave){
+            best_ave = new_ave;
+            best_data = new_data;
+            now_ave = new_ave;
+            now_data = new_data;
+        }else{
+            if(uni_dist(engine) < PROBABILITY(now_ave, new_ave, TEMPERATURE(ep / epoch))){
+                now_ave = new_ave;
+                now_data = new_data;
+            }
         }
 
-        normalize_data(data);
-
-        build_times = measure_build_times(data);
-        as = get_ave_std(build_times);
-        ave = as.first;
-        std::cerr << ave << std::endl;
-
-        /*
-        for(double d : data){
-            std::cerr << d << ' ';
+        if(ep % (epoch/10) == 0){
+            std::cerr << "-- "<< ep << " --"<< std::endl;
+            std::cerr << now_ave << std::endl;
         }
-        std::cerr << std::endl;
-        */
+
+        std::cout << now_ave << std::endl;
 
     }
+
+    /*
+    for(double d : best_data){
+        std::cout << d << ' ';
+    }
+    std::cout << std::endl;
+    */
+
+    build_times = measure_build_times(best_data, 5);
+    ave = - get_ave_std(build_times).first;
+    std = - get_ave_std(build_times).second;
+    std::cerr << ave <<std::endl;
+    std::cerr << std <<std::endl;
+    
+
 
     return 0;
 }
