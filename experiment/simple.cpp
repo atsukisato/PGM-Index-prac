@@ -108,9 +108,8 @@ void normalize_data(std::vector<double> &data){
 
 int main() {
     const int data_length = 1000;
-    const int epoch = 100;
+    const int epoch = 10;
     const double alpha = 0.1;
-    const double epsilon = 0.01;
 
     // init data
     std::vector<double> data = make_random_double_data(data_length);
@@ -131,6 +130,7 @@ int main() {
         for(int i=0;i<data_length-1;i++){
             ddata[i] += alpha * gradd[i];
             if(ddata[i] < 1e-10){
+                // to make data "narrowly" monotonous increase
                 ddata[i] = 1e-10;
             }
         }
