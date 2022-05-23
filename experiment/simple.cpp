@@ -104,36 +104,48 @@ void normalize_data(std::vector<double> &data){
 
 int main() {
     const int data_length = 1000000;
+    const int build_num = 10;
+    std::vector<double> build_times(build_num);
+    std::vector<double> sizes(build_num);
 
     // random data
-    std::vector<double> data = make_random_double_data(data_length);
-    normalize_data(data);
-
-    std::vector<double> build_times = measure_build_times(data, 10);
+    for(int i=0;i<build_num;i++){
+        std::vector<double> data = make_random_double_data(data_length);
+        normalize_data(data);
+        double build_time = measure_build_times(data, 1)[0];
+        int size = measure_size(data);
+        build_times[i] = build_time;
+        sizes[i] = size;
+    }
     std::cerr << "-- uniform --" << std::endl;
-    std::cerr << "ave:" << get_ave_std(build_times).first << std::endl;
-    std::cerr << "std:" << get_ave_std(build_times).second << std::endl;
-    std::cerr << "size:" << measure_size(data) << std::endl;
+    std::cerr << "construct time: " << get_ave_std(build_times).first << std::endl;
+    std::cerr << "size: " << get_ave_std(sizes).first << std::endl;
 
     // lognormal data
-    std::vector<double> lognormal_data = make_lognormal_double_data(data_length);
-    normalize_data(lognormal_data);
-
-    build_times = measure_build_times(lognormal_data, 10);
+    for(int i=0;i<build_num;i++){
+        std::vector<double> data = make_lognormal_double_data(data_length);
+        normalize_data(data);
+        double build_time = measure_build_times(data, 1)[0];
+        int size = measure_size(data);
+        build_times[i] = build_time;
+        sizes[i] = size;
+    }
     std::cerr << "-- lognormal --" << std::endl;
-    std::cerr << "ave:" << get_ave_std(build_times).first << std::endl;
-    std::cerr << "std:" << get_ave_std(build_times).second << std::endl;
-    std::cerr << "size:" << measure_size(lognormal_data) << std::endl;
+    std::cerr << "construct time: " << get_ave_std(build_times).first << std::endl;
+    std::cerr << "size: " << get_ave_std(sizes).first << std::endl;
 
     // expo data
-    std::vector<double> expo_data = make_expo_double_data(data_length);
-    normalize_data(expo_data);
-
-    build_times = measure_build_times(expo_data, 10);
-    std::cerr << "-- exponential --" << std::endl;
-    std::cerr << "ave:" << get_ave_std(build_times).first << std::endl;
-    std::cerr << "std:" << get_ave_std(build_times).second << std::endl;
-    std::cerr << "size:" << measure_size(expo_data) << std::endl;
+    for(int i=0;i<build_num;i++){
+        std::vector<double> data = make_expo_double_data(data_length);
+        normalize_data(data);
+        double build_time = measure_build_times(data, 1)[0];
+        int size = measure_size(data);
+        build_times[i] = build_time;
+        sizes[i] = size;
+    }
+    std::cerr << "-- exponentail --" << std::endl;
+    std::cerr << "construct time: " << get_ave_std(build_times).first << std::endl;
+    std::cerr << "size: " << get_ave_std(sizes).first << std::endl;
 
     return 0;
 }
