@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <random>
 #include "pgm/pgm_index.hpp"
 
 
@@ -62,39 +63,30 @@ std::vector<double> make_random_double_data(const int data_length = 1000000, con
     return data;
 }
 
-std::vector<double> calc_grad(const std::vector<double> &data){
-    const int n = data.size();
-
-    std::vector<double> build_times = measure_build_times(data);
-    std::pair<double, double> base = get_ave_std(build_times);
-    const double base_ave = base.first;
-    const double base_std = base.second;
-
-    std::vector<double> ddata(n-1);
-    for(int i=0;i<n-1;i++){
-        ddata[i] = data[i+1] - data[i];
+std::vector<double> make_expo_double_data(const int data_length = 1000000){
+    std::vector<double> data(data_length);
+    double r = 1.000001;
+    data[0] = 1.0;
+    for(int i = 1; i < data_length; i++){
+        data[i] = data[i-1] * r;
     }
+    sort(data.begin(), data.end());
+    return data;
+}
 
-    const double delta = 0.01;
+std::vector<double> make_lognormal_double_data(const int data_length = 1000000){
+    std::vector<double> data;
 
-    std::vector<double> grad_ddata(n-1);
-    for(int i=0;i<n-1;i++){
-        ddata[i] += delta;
-        std::vector<double> tmp_data(n);
-        tmp_data[0] = data[0];
-        for(int j=1;j<n;j++){
-            tmp_data[j] = tmp_data[j-1] + ddata [j-1];
-        }
-        ddata[i] -= delta;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::lognormal_distribution<> d(0.0, 1.0);
 
-        std::vector<double> build_times = measure_build_times(tmp_data);
-        std::pair<double, double> as = get_ave_std(build_times);
-        double ave = as.first;
-        double std = as.second;
-        grad_ddata[i] = (ave - base_ave) / delta;
+    for(int i = 0; i < data_length; i++){
+        double f = d(gen);
+        data.push_back(f);
     }
-
-    return grad_ddata;
+    sort(data.begin(), data.end());
+    return data;
 }
 
 void normalize_data(std::vector<double> &data){
@@ -107,53 +99,37 @@ void normalize_data(std::vector<double> &data){
 }
 
 int main() {
-    const int data_length = 1000;
-    const int epoch = 100;
-    const double alpha = 0.1;
-    const double epsilon = 0.01;
+    const int data_length = 1000000;
 
-    // init data
+    // random data
     std::vector<double> data = make_random_double_data(data_length);
     normalize_data(data);
 
-    std::vector<double> build_times = measure_build_times(data);
-    std::pair<double, double> as = get_ave_std(build_times);
-    double ave = as.first;
-    double std = as.second;
-    std::cerr << ave << std::endl;
+    std::vector<double> build_times = measure_build_times(data, 10);
+    std::cerr << "-- uniform --" << std::endl;
+    std::cerr << "ave:" << get_ave_std(build_times).first << std::endl;
+    std::cerr << "std:" << get_ave_std(build_times).second << std::endl;
+    std::cerr << "size:" << measure_size(data) << std::endl;
 
-    for(int ep = 0; ep < epoch; ep++){
-        std::vector<double> ddata(data_length-1);
-        for(int i=0;i<data_length-1;i++){
-            ddata[i] = data[i+1] - data[i];
-        }
-        std::vector<double> gradd = calc_grad(data);
-        for(int i=0;i<data_length-1;i++){
-            ddata[i] += alpha * gradd[i];
-            if(ddata[i] < 1e-10){
-                ddata[i] = 1e-10;
-            }
-        }
+    // expo data
+    std::vector<double> expo_data = make_expo_double_data(data_length);
+    normalize_data(expo_data);
 
-        for(int i=1;i<data_length;i++){
-            data[i] = data[i-1] + ddata[i-1];
-        }
+    build_times = measure_build_times(expo_data, 10);
+    std::cerr << "-- exponential --" << std::endl;
+    std::cerr << get_ave_std(build_times).first << std::endl;
+    std::cerr << get_ave_std(build_times).second << std::endl;
+    std::cerr << "size:" << measure_size(expo_data) << std::endl;
 
-        normalize_data(data);
+    // lognormal data
+    std::vector<double> lognormal_data = make_lognormal_double_data(data_length);
+    normalize_data(lognormal_data);
 
-        build_times = measure_build_times(data);
-        as = get_ave_std(build_times);
-        ave = as.first;
-        std::cerr << ave << std::endl;
-
-        /*
-        for(double d : data){
-            std::cerr << d << ' ';
-        }
-        std::cerr << std::endl;
-        */
-
-    }
+    build_times = measure_build_times(lognormal_data, 10);
+    std::cerr << "-- lognormal --" << std::endl;
+    std::cerr << get_ave_std(build_times).first << std::endl;
+    std::cerr << get_ave_std(build_times).second << std::endl;
+    std::cerr << "size:" << measure_size(lognormal_data) << std::endl;
 
     return 0;
 }
