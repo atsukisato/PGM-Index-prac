@@ -16,29 +16,35 @@
 #include <random>
 #include <set>
 #include <fstream>
+#include <climits>
 #include "pgm/pgm_index.hpp"
 
 
 const int epsilon = 128;
+const int data_length = 1000000;
+const int build_num = 10;
+const int query_num_per_build = 1000000;
 
 template<typename T>
-std::vector<double> measure_build_times(const std::vector<T> &data, const int build_num = 10){
-    std::vector<double> build_times;
-    for(int i = 0; i < build_num; i++){
-        std::chrono::system_clock::time_point start, end;
-        start = std::chrono::system_clock::now();
-        pgm::PGMIndex<T, epsilon> index(data);
-        end = std::chrono::system_clock::now();
-        double time = static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() / 1000.0);
-        build_times.push_back(time);
+void output_data(const std::vector<T> &data, const char *file_name){
+    std::ofstream ofs(file_name);
+    for(int i=0;i<data.size();i++){
+        ofs << data[i];
+        if(i == data.size()-1){
+            ofs << std::endl;
+        }else{
+            ofs << ' ';
+        }
     }
-    return build_times;
 }
 
-template<typename T>
-double measure_size(const std::vector<T> &data){
-    pgm::PGMIndex<T, epsilon> index(data);
-    return (double)index.size_in_bytes();
+void normalize_data(std::vector<double> &data){
+    const int n = data.size();
+    double a = 1.0 / (data[n-1] - data[0]);
+    double b = data[0];
+    for(int i=0;i<n;i++){
+        data[i] = (data[i] - b) * a;
+    }
 }
 
 std::pair<double, double> get_ave_std(std::vector<double> vec){
@@ -54,7 +60,6 @@ std::pair<double, double> get_ave_std(std::vector<double> vec){
     return std::pair<double, double>(ave, std);
 }
 
-
 std::vector<double> make_uniform_double_data(const int data_length = 1000000){
     const double fMin = 0.0;
     const double fMax = 1.0;
@@ -66,6 +71,7 @@ std::vector<double> make_uniform_double_data(const int data_length = 1000000){
         data.push_back(rn);
     }
     sort(data.begin(), data.end());
+    normalize_data(data);
     return data;
 }
 
@@ -81,6 +87,7 @@ std::vector<double> make_expo_double_data(const int data_length = 1000000){
         data.push_back(f);
     }
     sort(data.begin(), data.end());
+    normalize_data(data);
     return data;
 }
 
@@ -96,16 +103,29 @@ std::vector<double> make_lognormal_double_data(const int data_length = 1000000){
         data.push_back(f);
     }
     sort(data.begin(), data.end());
+    normalize_data(data);
     return data;
 }
 
-void normalize_data(std::vector<double> &data){
-    const int n = data.size();
-    double a = 1.0 / (data[n-1] - data[0]);
-    double b = data[0];
-    for(int i=0;i<n;i++){
-        data[i] = (data[i] - b) * a;
+std::vector<int> make_stair_double_data(const int data_length = 1000000){
+    int step_width = epsilon * 3;   // ステップ幅
+    // i番目に登場する数字 = [1.01^i] とする
+    
+    std::vector<double> data;
+
+    for(int i = 0; i < data_length; i++){
+        double f = pow(1.001, (int)(i / step_width) + 1);
+        data.push_back(f);
     }
+    std::vector<int> idata;
+    double a = (INT_MAX - 1) / (data[data_length-1] - data[0]);
+    double b = data[0];
+    for(int i = 0; i < data_length; i++) {
+        int x = (data[i] - b ) * a;
+        idata.push_back(x);
+    }
+    sort(idata.begin(), idata.end());
+    return idata;
 }
 
 struct Result {
@@ -120,14 +140,18 @@ Result measure(std::vector<T>(*gen_data)(int), const int data_length, const int 
     std::vector<double> sizes;
     std::vector<double> query_times;
 
-    const int query_num_per_build = 1000000;
-
     for(int i=0;i<build_num;i++){
-        std::vector<double> data = gen_data(data_length);
-        normalize_data(data);
+        std::vector<T> data = gen_data(data_length);
 
         // measure build time
         std::chrono::system_clock::time_point start, end;
+        try{
+            pgm::PGMIndex<T, epsilon> index(data);
+        }catch(...){
+            output_data(data, "err.txt");
+            std::cerr << "ERR" << std::endl;
+            exit(1);
+        }
         start = std::chrono::system_clock::now();
         pgm::PGMIndex<T, epsilon> index(data);
         end = std::chrono::system_clock::now();
@@ -168,11 +192,8 @@ Result measure_multiset(std::vector<T>(*gen_data)(int), const int data_length, c
     std::vector<double> sizes;
     std::vector<double> query_times;
 
-    const int query_num_per_build = 1000000;
-
     for(int i=0;i<build_num;i++){
-        std::vector<double> data_v = gen_data(data_length);
-        normalize_data(data_v);
+        std::vector<T> data_v = gen_data(data_length);
         double data[data_length];
         for(int j=0;j<data_length;j++){
             data[j] = data_v[j];
@@ -215,86 +236,96 @@ Result measure_multiset(std::vector<T>(*gen_data)(int), const int data_length, c
     return res;
 }
 
-void output_data(const std::vector<double> &data, const char *file_name){
-    std::ofstream ofs(file_name);
-    for(int i=0;i<data.size();i++){
-        ofs << data[i];
-        if(i == data.size()-1){
-            ofs << std::endl;
-        }else{
-            ofs << ' ';
-        }
-    }
-}
-
 int main() {
-    const int data_length = 1000000;
-    const int build_num = 10;
 
-    Result res;
-    // PGM
-    // uniform data
-    res = measure(make_uniform_double_data, data_length, build_num);
-    std::cerr << "-- uniform --" << std::endl;
-    std::cerr << "construct time: " << res.build_time << std::endl;
-    std::cerr << "size: " << res.size << std::endl;
-    std::cerr << "query_time: " << res.query_time << std::endl;
+    {
+        // output each data
+        std::vector<double> data;
 
-    // lognormal data
-    res = measure(make_lognormal_double_data, data_length, build_num);
-    std::cerr << "-- lognormal --" << std::endl;
-    std::cerr << "construct time: " << res.build_time << std::endl;
-    std::cerr << "size: " << res.size << std::endl;
-    std::cerr << "query_time: " << res.query_time << std::endl;
+        // uniform data
+        data = make_uniform_double_data(data_length);
+        normalize_data(data);
+        output_data(data, "./uniform.txt");
 
-    // expo data
-    res = measure(make_expo_double_data, data_length, build_num);
-    std::cerr << "-- exponential --" << std::endl;
-    std::cerr << "construct time: " << res.build_time << std::endl;
-    std::cerr << "size: " << res.size << std::endl;
-    std::cerr << "query_time: " << res.query_time << std::endl;
+        // lognormal data
+        data = make_lognormal_double_data(data_length);
+        normalize_data(data);
+        output_data(data, "./lognormal.txt");
 
-    // MultiSet
-    // uniform data
-    res = measure_multiset(make_uniform_double_data, data_length, build_num);
-    std::cerr << "-- uniform --" << std::endl;
-    std::cerr << "construct time: " << res.build_time << std::endl;
-    std::cerr << "size: " << res.size << std::endl;
-    std::cerr << "query_time: " << res.query_time << std::endl;
+        // expo data
+        data = make_expo_double_data(data_length);
+        normalize_data(data);
+        output_data(data, "./expo.txt");
 
-    // lognormal data
-    res = measure_multiset(make_lognormal_double_data, data_length, build_num);
-    std::cerr << "-- lognormal --" << std::endl;
-    std::cerr << "construct time: " << res.build_time << std::endl;
-    std::cerr << "size: " << res.size << std::endl;
-    std::cerr << "query_time: " << res.query_time << std::endl;
+        // stair data
+        std::vector<int> idata = make_stair_double_data(data_length);
+        // normalize_data(data);
+        output_data(idata, "./stair.txt");
+    }
 
-    // expo data
-    res = measure_multiset(make_expo_double_data, data_length, build_num);
-    std::cerr << "-- exponential --" << std::endl;
-    std::cerr << "construct time: " << res.build_time << std::endl;
-    std::cerr << "size: " << res.size << std::endl;
-    std::cerr << "query_time: " << res.query_time << std::endl;
+    {
+        // PGM
+        Result res;
+        // uniform data
+        res = measure(make_uniform_double_data, data_length, build_num);
+        std::cerr << "-- uniform --" << std::endl;
+        std::cerr << "construct time: " << res.build_time << std::endl;
+        std::cerr << "size: " << res.size << std::endl;
+        std::cerr << "query_time: " << res.query_time << std::endl;
 
+        // lognormal data
+        res = measure(make_lognormal_double_data, data_length, build_num);
+        std::cerr << "-- lognormal --" << std::endl;
+        std::cerr << "construct time: " << res.build_time << std::endl;
+        std::cerr << "size: " << res.size << std::endl;
+        std::cerr << "query_time: " << res.query_time << std::endl;
 
-    // output each data
-    std::vector<double> data;
+        // expo data
+        res = measure(make_expo_double_data, data_length, build_num);
+        std::cerr << "-- expo --" << std::endl;
+        std::cerr << "construct time: " << res.build_time << std::endl;
+        std::cerr << "size: " << res.size << std::endl;
+        std::cerr << "query_time: " << res.query_time << std::endl;
+        
+        // stair data
+        res = measure(make_stair_double_data, data_length, build_num);
+        std::cerr << "-- stair --" << std::endl;
+        std::cerr << "construct time: " << res.build_time << std::endl;
+        std::cerr << "size: " << res.size << std::endl;
+        std::cerr << "query_time: " << res.query_time << std::endl;
+    }
 
-    // uniform data
-    data = make_uniform_double_data(data_length);
-    normalize_data(data);
-    output_data(data, "./uniform.txt");
+    {
+        // multiset
+        Result res;
+        // uniform data
+        res = measure_multiset(make_uniform_double_data, data_length, build_num);
+        std::cerr << "-- uniform --" << std::endl;
+        std::cerr << "construct time: " << res.build_time << std::endl;
+        std::cerr << "size: " << res.size << std::endl;
+        std::cerr << "query_time: " << res.query_time << std::endl;
 
-    // lognormal data
-    data = make_lognormal_double_data(data_length);
-    normalize_data(data);
-    output_data(data, "./lognormal.txt");
+        // lognormal data
+        res = measure_multiset(make_lognormal_double_data, data_length, build_num);
+        std::cerr << "-- lognormal --" << std::endl;
+        std::cerr << "construct time: " << res.build_time << std::endl;
+        std::cerr << "size: " << res.size << std::endl;
+        std::cerr << "query_time: " << res.query_time << std::endl;
 
-    // expo data
-    data = make_expo_double_data(data_length);
-    normalize_data(data);
-    output_data(data, "./expo.txt");
+        // expo data
+        res = measure_multiset(make_expo_double_data, data_length, build_num);
+        std::cerr << "-- expo --" << std::endl;
+        std::cerr << "construct time: " << res.build_time << std::endl;
+        std::cerr << "size: " << res.size << std::endl;
+        std::cerr << "query_time: " << res.query_time << std::endl;
 
+        // stair data
+        res = measure_multiset(make_stair_double_data, data_length, build_num);
+        std::cerr << "-- stair --" << std::endl;
+        std::cerr << "construct time: " << res.build_time << std::endl;
+        std::cerr << "size: " << res.size << std::endl;
+        std::cerr << "query_time: " << res.query_time << std::endl;
+    }
 
     return 0;
 }

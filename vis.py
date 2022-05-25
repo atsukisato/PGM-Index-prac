@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-file_names = ["uniform", "lognormal", "expo"]
+file_names = ["uniform", "lognormal", "expo", "stair"]
 
 for file_name in file_names:
     source_file_name = file_name + ".txt"
@@ -14,7 +14,7 @@ for file_name in file_names:
     x = np.array(li)
     y = np.arange(1, len(li)+1, 1)
 
-    plt.plot(x, y)
+    plt.plot(x, y, lw=5)
     
     plt.savefig(output_file_name)   # プロットしたグラフをファイルsin.pngに保存する
     plt.show()
