@@ -107,7 +107,7 @@ std::vector<double> make_lognormal_double_data(const int data_length = 1000000){
     return data;
 }
 
-std::vector<int> make_stair_double_data(const int data_length = 1000000){
+std::vector<int> make_stair_int_data(const int data_length = 1000000){
     int step_width = epsilon * 3;   // ステップ幅
     // i番目に登場する数字 = [1.01^i] とする
     
@@ -258,7 +258,7 @@ int main() {
         output_data(data, "./expo.txt");
 
         // stair data
-        std::vector<int> idata = make_stair_double_data(data_length);
+        std::vector<int> idata = make_stair_int_data(data_length);
         // normalize_data(data);
         output_data(idata, "./stair.txt");
     }
@@ -288,7 +288,7 @@ int main() {
         std::cerr << "query_time: " << res.query_time << std::endl;
         
         // stair data
-        res = measure(make_stair_double_data, data_length, build_num);
+        res = measure(make_stair_int_data, data_length, build_num);
         std::cerr << "-- stair --" << std::endl;
         std::cerr << "construct time: " << res.build_time << std::endl;
         std::cerr << "size: " << res.size << std::endl;
@@ -320,7 +320,7 @@ int main() {
         std::cerr << "query_time: " << res.query_time << std::endl;
 
         // stair data
-        res = measure_multiset(make_stair_double_data, data_length, build_num);
+        res = measure_multiset(make_stair_int_data, data_length, build_num);
         std::cerr << "-- stair --" << std::endl;
         std::cerr << "construct time: " << res.build_time << std::endl;
         std::cerr << "size: " << res.size << std::endl;
