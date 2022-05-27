@@ -215,6 +215,22 @@ public:
      * @return the size of the index in bytes
      */
     size_t size_in_bytes() const { return segments.size() * sizeof(Segment) + levels_offsets.size() * sizeof(size_t); }
+
+    void debug() const {
+        std::cerr << "segments_count: " << segments_count() << std::endl;
+        std::cerr << "height: " << height() << std::endl;
+        std::cerr << "size: " << size_in_bytes() << std::endl;
+        std::cerr << "levels_offsets (size = " << levels_offsets.size() << "): " << std::endl;
+        for(auto offset : levels_offsets){
+            std::cerr << offset << std::endl;
+        }
+        std::cerr << "segments (size = " << segments.size() << "): " << std::endl;
+        for(auto segment : segments){
+            std::cerr << "key: " << segment.key << ", slope: " << segment.slope << ", intercept: " << segment.intercept << std::endl;
+        }
+
+
+    }
 };
 
 #pragma pack(push, 1)
