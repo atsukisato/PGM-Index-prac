@@ -222,13 +222,30 @@ public:
         std::cerr << "size: " << size_in_bytes() << std::endl;
         std::cerr << "levels_offsets (size = " << levels_offsets.size() << "): " << std::endl;
         for(auto offset : levels_offsets){
-            std::cerr << offset << std::endl;
+            std::cerr << offset << ", ";
         }
-        std::cerr << "segments (size = " << segments.size() << "): " << std::endl;
-        for(auto segment : segments){
-            std::cerr << "key: " << segment.key << ", slope: " << segment.slope << ", intercept: " << segment.intercept << std::endl;
-        }
+        std::cerr << std::endl;
+        std::cerr << "segments (size =" << segments.size() << "): " << std::endl;
+        for(int layer = (int)levels_offsets.size() - 1; layer >= 1; layer--){
+            /**
+             * layer層目のsegmentはsegments[levels_offsets[layer-1]:levels_offsets[layer]]
+             */
 
+            // 傾きとかも表示する
+            std::cerr << "layer" << layer << std::endl;
+            for(int i = levels_offsets[layer-1]; i < levels_offsets[layer]; i++){
+                std::cerr << i - levels_offsets[layer-1] << " key: " << segments[i].key << ", slope: " << segments[i].slope << ", intercept: " << segments[i].intercept << std::endl;
+            }
+
+            /*
+            // keyだけ
+            std::cerr << "layer" << layer << ": keys = ";
+            for(int i = levels_offsets[layer-1]; i < levels_offsets[layer]; i++){
+                std::cerr << segments[i].key << ", ";
+            }
+            std::cerr << std::endl;
+            */
+        }
 
     }
 };

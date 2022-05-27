@@ -17,10 +17,16 @@
 
 
 int main() {
-    std::vector<int> data{1, 2, 4, 8, 16, 32, 64, 128, 256, 512};
+    std::vector<long int> data;
+    long int now = 10000;
+    while(now <= LONG_MAX / 2){
+        data.push_back(now);
+        now *= 1.0001;
+    }
+
     const int epsilon = 2;
 
-    pgm::PGMIndex<int, epsilon> index(data);
+    pgm::PGMIndex<long int, epsilon> index(data);
 
     index.debug();
 
