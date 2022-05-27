@@ -1,4 +1,4 @@
-const int epsilon = 128;
+#include "settings.hpp"
 
 template<typename T>
 void output_data(const std::vector<T> &data, const char *file_name){
@@ -50,7 +50,7 @@ std::vector<double> make_uniform_double_data(const int data_length = 1000000){
     return data;
 }
 
-std::vector<double> make_expo_double_data(const int data_length = 1000000){
+std::vector<double> make_exponential_double_data(const int data_length = 1000000){
     std::vector<double> data;
 
     std::random_device rd;
